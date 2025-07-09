@@ -1,7 +1,8 @@
 "use client"
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser, UserState } from '@/lib/slice/userSlice';
+import { loginUser} from '@/lib/slice/userSlice';
+import { UserState } from '@/types/userTypes';
 import { redirect, useRouter } from 'next/navigation';
 import { AppDispatch, RootState } from '@/lib/redux-store';
 
@@ -57,7 +58,7 @@ const LoginPage: React.FC = () => {
                             id="username"
                             name="username"
                             required
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full px-4 py-2 text-black border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                     </div>
                     <div>
@@ -67,7 +68,7 @@ const LoginPage: React.FC = () => {
                             id="password"
                             name="password"
                             required
-                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="w-full text-black px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
                     </div>
                     <button

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
+import { useDispatch,useSelector } from "react-redux";
 import axios from "axios";
 import { setUser } from "@/lib/slice/userSlice";
 
@@ -15,6 +15,7 @@ export default function IncidentsPage() {
 
     const [incidents, setIncidents] = useState<Incident[]>([]);
     const router = useRouter();
+    
     const dispatch = useDispatch();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export default function IncidentsPage() {
         async function fetchIncidents() {
             try {
                 const response = await axios.get("/api/incidents");
-                const incidents = response.data as Incident[]; // Explicitly cast response data to Incident[]
+                const incidents = response.data as Incident[]; 
                 setIncidents(incidents);
             } catch (error) {
                 console.error("Error fetching incidents:", error);

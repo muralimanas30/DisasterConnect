@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux"; // Import useDispatch for updating Redux state
 import axios from "axios";
 import { setUser } from "@/lib/slice/userSlice"; // Assuming you have a Redux slice for user state
+import { useRouter } from 'next/navigation';
 
 const disasters = [
     "floods",
@@ -17,6 +18,7 @@ const disasters = [
 ];
 
 export default function ReportIncidentPage() {
+    const router = useRouter();
     const user = useSelector((store: any) => store.user); // Get user data from the Redux store
     const dispatch = useDispatch(); // Initialize dispatch for updating Redux state
     const [formData, setFormData] = useState({
@@ -77,6 +79,7 @@ export default function ReportIncidentPage() {
                 incident_type: "",
                 description: "",
             });
+            router.push('/dashboard')
         } catch (error) {
             console.error("Error reporting incident:", error);
             setError("Failed to report the incident. Please try again.");
