@@ -6,7 +6,21 @@ const Volunteer = require('../models/Volunteer');
 // Create a new incident
 const createIncident = async (req, res, next) => {
     try {
-        const incident = await incidentService.createIncident(req.body);
+        // Create the incident with the reporting user as the first victim
+        const incidentData = {
+            ...req.body,
+            victims: [req.user._id],
+        };
+
+        // Always add an initial report using the description/message and reporting user
+        incidentData.reports = [{
+            user: req.user._id,
+            message: req.body.description || 'Initial report',
+            createdAt: new Date(),
+            assignedVolunteers: []
+        }];
+
+        const incident = await incidentService.createIncident(incidentData);
         res.status(StatusCodes.CREATED).json({ status: 'success', incident });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
@@ -62,7 +76,10 @@ const getNearbyIncidents = async (req, res, next) => {
 // Update incident status
 const updateIncidentStatus = async (req, res, next) => {
     try {
+        // This is the main stage where an incident is marked as 'resolved'
+        // Typically, this is called when all victims confirm resolution or an admin/volunteer marks it resolved
         const updated = await incidentService.updateIncidentStatus(req.params.incidentId, req.body.status, req.user);
+        // If req.body.status === 'resolved', the incident is now considered completed
         res.status(StatusCodes.OK).json({ status: 'success', incident: updated });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
@@ -120,13 +137,14 @@ const assignVolunteerToIncident = async (req, res, next) => {
     try {
         const incident = await incidentService.assignVolunteerToIncident(
             req.params.incidentId,
-            req.body.volunteerId // expects { volunteerId: ... }
+            req.user._id // <-- always use the logged-in user's id
         );
-        res.status(StatusCodes.OK).json({ status: 'success', incident });
+        res.status(200).json({ status: 'success', incident });
     } catch (error) {
+        console.error('Assign to incident error:', error);
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to assign volunteer.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+            error.statusCode || 500,
             error
         ));
     }
@@ -210,6 +228,21 @@ const listVictimsForIncident = async (req, res, next) => {
     }
 };
 
+// Get all reports for an incident
+const getReportsForIncident = async (req, res, next) => {
+    try {
+        const incident = await incidentService.getIncidentById(req.params.incidentId);
+        if (!incident) throw new CustomError('Incident not found', 404);
+        res.status(StatusCodes.OK).json({ status: 'success', reports: incident.reports });
+    } catch (error) {
+        next(error instanceof CustomError ? error : new CustomError(
+            error.message || "Failed to get reports.",
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+            error
+        ));
+    }
+};
+
 module.exports = {
     createIncident,
     getIncidents,
@@ -225,5 +258,6 @@ module.exports = {
     updateIncident,
     deleteIncident,
     listVictimsForIncident,
+    getReportsForIncident,
     // ...add more exports as needed
 };

@@ -29,7 +29,7 @@ describe('User API', () => {
                 email: 'testuser@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
         expect(res.statusCode).toBe(201);
         expect(res.body).toHaveProperty('user');
@@ -52,7 +52,7 @@ describe('User API', () => {
                 email: 'dupe@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
         // Try to register again with same email
         const res = await request(app)
@@ -62,7 +62,7 @@ describe('User API', () => {
                 email: 'dupe@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
         expect(res.statusCode).toBe(400);
     });
@@ -76,7 +76,7 @@ describe('User API', () => {
                 email: 'loginuser@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
         // Login
         const res = await request(app)
@@ -103,7 +103,7 @@ describe('User API', () => {
                 email: 'wrongpass@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
         // Attempt login with wrong password
         const res = await request(app)

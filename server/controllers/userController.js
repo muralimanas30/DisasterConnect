@@ -8,12 +8,25 @@ const { StatusCodes } = require('http-status-codes');
 const register = async (req, res, next) => {
     try {
         const user = await userService.register(req.body);
+        // If role is volunteer, create Volunteer doc if not exists
+        if (user.role === 'volunteer') {
+            const Volunteer = require('../models/Volunteer');
+            const exists = await Volunteer.findOne({ user: user._id });
+            if (!exists) {
+                await Volunteer.create({
+                    user: user._id,
+                    status: 'available',
+                    currentLocation: user.currentLocation,
+                    skills: req.body.skills || []
+                });
+            }
+        }
         const token = user.generateJWT();
         res.status(StatusCodes.CREATED).json({ user, token }); // 201
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to register.",
-            StatusCodes.BAD_REQUEST, // 400 for validation/duplicate errors
+            StatusCodes.BAD_REQUEST,
             error
         ));
     }
@@ -51,14 +64,38 @@ const getProfile = async (req, res, next) => {
 
 const updateProfile = async (req, res, next) => {
     try {
+        // console.log('PATCH /api/users/profile called');
+        // console.log('Request user:', req.user);
+        // console.log('Request body:', req.body);
+
         const user = await userService.updateUser(req.user._id, req.body);
-        res.status(StatusCodes.OK).json({ status: 'success', user });
+        let mergedUser = user.toObject ? user.toObject() : { ...user };
+        // console.log('User after updateUser:', mergedUser);
+
+        if (user.role === 'volunteer') {
+            const Volunteer = require('../models/Volunteer');
+            // Always update and fetch the latest volunteer doc
+            const volunteer = await Volunteer.findOneAndUpdate(
+                { user: user._id },
+                req.body,
+                { new: true }
+            );
+            // console.log('Volunteer after findOneAndUpdate:', volunteer);
+            if (volunteer) {
+                // Merge all volunteer fields (except _id and user) into mergedUser
+                const { _id, user: userRef, ...volFields } = volunteer.toObject();
+                mergedUser = { ...mergedUser, ...volFields };
+                // console.log('Merged user after merging volunteer fields:', mergedUser);
+            } else {
+                // console.log('No volunteer document found for user:', user._id);
+            }
+        }
+
+        // console.log('Final response user:', mergedUser);
+        res.status(200).json({ user: mergedUser });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to update profile.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        // console.error('Error in updateProfile:', error);
+        next(error);
     }
 };
 

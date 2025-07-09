@@ -3,17 +3,13 @@ const Joi = require('joi');
 const createIncidentSchema = Joi.object({
     title: Joi.string().required(),
     description: Joi.string().allow(''),
-    status: Joi.string().valid('open', 'in_progress', 'resolved').optional(),
     location: Joi.object({
         type: Joi.string().valid('Point').default('Point'),
         coordinates: Joi.array().items(
             Joi.number().min(-180).max(180)
         ).length(2).required()
     }).required(),
-    victims: Joi.array().items(Joi.string().hex().length(24)).optional(),
-    volunteers: Joi.array().items(Joi.string().hex().length(24)).optional(),
-    reports: Joi.array().optional(),
-    resources: Joi.array().items(Joi.string().hex().length(24)).optional()
+    // victims, volunteers, reports, resources are set by backend logic
 });
 
 const validateCreateIncident = (req, res, next) => {

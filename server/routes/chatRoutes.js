@@ -5,13 +5,13 @@ const router = express.Router();
 
 router.use(authMW);
 
-// Only include routes for controller functions that are implemented and exported
+// REST endpoints for chat history (optional, for fallback)
+router.get('/incident/:incidentId', chatController.getIncidentChat);
 
-// If you have not implemented these functions, comment them out or remove them
-// router.post('/room', chatController.createChatRoom);
-// router.get('/room/:roomId', chatController.getChatRoom);
-// router.get('/room/:roomId/messages', chatController.getRoomMessages);
-
-// ...add more chat routes as you implement and verify them
+module.exports = router;
+router.post('/incident/:incidentId/message', (req, res, next) => {
+    req.body.incident = req.params.incidentId;
+    next();
+}, chatController.sendMessage);
 
 module.exports = router;

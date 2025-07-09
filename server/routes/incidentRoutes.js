@@ -4,29 +4,47 @@ const { validateCreateIncident } = require('../validators/incidentValidator');
 const authMW = require('../middlewares/auth');
 const router = express.Router();
 
+// All endpoints require authentication
 router.use(authMW);
 
-// CRUD
-router.get('/', incidentController.getIncidents); // List all incidents
-router.post('/', validateCreateIncident, incidentController.createIncident); // Create a new incident
-router.post('/report', validateCreateIncident, incidentController.reportIncident); // Victim reports a new incident (with themselves as a victim)
-router.get('/nearby', incidentController.getNearbyIncidents); // Get incidents near the authenticated user's location
-router.patch('/:incidentId/status', incidentController.updateIncidentStatus); // Update the status (open, in_progress, resolved) of a specific incident
-router.post('/:incidentId/victim-report', incidentController.addVictimReport); // Add a new victim report to an existing incident
-router.post('/:incidentId/gathering-invitation', incidentController.sendGatheringInvitation); // Send a gathering invitation for an incident
+// RESTful, minimal, non-redundant incident endpoints
 
-// Incident details, update, delete
-router.get('/:incidentId', incidentController.getIncidentById); // Get details of a specific incident
-router.patch('/:incidentId', incidentController.updateIncident); // Update details of a specific incident
-router.delete('/:incidentId', incidentController.deleteIncident); // Delete a specific incident
+// List all incidents / Create new incident
+router.route('/')
+    .get(incidentController.getIncidents) // GET /api/incidents
+    .post(validateCreateIncident, incidentController.createIncident); // POST /api/incidents
+
+// Get, update, delete a specific incident
+router.route('/:incidentId')
+    .get(incidentController.getIncidentById) // GET /api/incidents/:id
+    .patch(incidentController.updateIncident) // PATCH /api/incidents/:id
+    .delete(incidentController.deleteIncident); // DELETE /api/incidents/:id
 
 // Assign volunteer to incident
-router.post('/:incidentId/assign-volunteer', incidentController.assignVolunteerToIncident); // Assign a volunteer to an incident
+router.post('/:incidentId/assign', incidentController.assignVolunteerToIncident); // POST /api/incidents/:id/assign
 
-// List victims/volunteers for an incident
-router.get('/:incidentId/victims', incidentController.listVictimsForIncident); // List all victims for a specific incident
-router.get('/:incidentId/volunteers', incidentController.listVolunteersForIncident); // List all volunteers (with live location/status) for a specific incident
+// Get incidents near the authenticated user's location
+router.get('/nearby', incidentController.getNearbyIncidents); // GET /api/incidents/nearby
 
-// Volunteer Accepts a Report
-router.post('/:incidentId/reports/:reportIndex/accept', incidentController.acceptReport); // Volunteer accepts a specific report for an incident (assigns themselves to that report)
+// Victims and volunteers for an incident
+router.get('/:incidentId/victims', incidentController.listVictimsForIncident); // GET /api/incidents/:id/victims
+router.get('/:incidentId/volunteers', incidentController.listVolunteersForIncident); // GET /api/incidents/:id/volunteers
+
+// Reports for an incident (list, add)
+router.route('/:incidentId/reports')
+    .get(incidentController.getReportsForIncident) // GET /api/incidents/:id/reports
+    .post(incidentController.addVictimReport);     // POST /api/incidents/:id/reports
+
+// Accept a report for an incident (assign yourself to a report)
+router.post('/:incidentId/reports/:reportIndex/accept', incidentController.acceptReport); // POST /api/incidents/:id/reports/:reportId/accept
+
+// Update incident status
+router.patch('/:incidentId/status', incidentController.updateIncidentStatus); // PATCH /api/incidents/:id/status
+
+// Gathering invitation (if needed)
+router.post('/:incidentId/gathering-invitation', incidentController.sendGatheringInvitation); // POST /api/incidents/:id/gathering-invitation
+
+// Report a new incident (victim/volunteer)
+router.post('/report', incidentController.reportIncident); // POST /api/incidents/report
+
 module.exports = router;

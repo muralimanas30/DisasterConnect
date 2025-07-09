@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Incident = require('../models/Incident');
 const Volunteer = require('../models/Volunteer');
 const { CustomError } = require('../errorHandler/errorHandler');
@@ -25,8 +26,8 @@ const reportIncident = async (incidentData, user) => {
 };
 
 // Get nearby incidents by user location
-const getNearbyIncidents = async (location) => {
-    if (!location || !location.coordinates) {
+const getNearbyIncidents = async (currentLocation) => {
+    if (!currentLocation || !currentLocation.coordinates) {
         throw new CustomError('User location not provided', 400);
     }
     return await Incident.find({
@@ -34,7 +35,7 @@ const getNearbyIncidents = async (location) => {
             $near: {
                 $geometry: {
                     type: 'Point',
-                    coordinates: location.coordinates
+                    coordinates: currentLocation.coordinates
                 },
                 $maxDistance: 10000 // 10km, adjust as needed
             }
@@ -83,27 +84,28 @@ const listVolunteersForIncident = async (incidentId) => {
     return volunteers;
 };
 
-// Assign a volunteer to an incident
-const assignVolunteerToIncident = async (incidentId, volunteerId) => {
-    const incident = await Incident.findById(incidentId);
-    if (!incident) throw new CustomError('Incident not found', 404);
-
-    // Only add if not already assigned
-    if (!incident.volunteers.includes(volunteerId)) {
-        incident.volunteers.push(volunteerId);
-        await incident.save();
+function toObjectId(id) {
+    if (id instanceof mongoose.Types.ObjectId) return id;
+    if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
+        return new mongoose.Types.ObjectId(id);
     }
-    return incident;
+    throw new CustomError('Invalid ObjectId', 400);
+}
+
+// Assign a volunteer to an incident
+const assignVolunteerToIncident = async (incidentId, userId) => {
+    const objectId = toObjectId(incidentId);
+    return await require('./volunteerService').assignToIncident(userId, objectId);
 };
 
 // Accept a report for an incident
 const acceptReport = async (incidentId, reportIndex, volunteerId) => {
-    const incident = await Incident.findById(incidentId);
+    const objectId = toObjectId(incidentId);
+    const incident = await Incident.findById(objectId);
     if (!incident) throw new CustomError('Incident not found', 404);
     const report = incident.reports[reportIndex];
     if (!report) throw new CustomError('Report not found', 404);
 
-    // Only add if not already assigned
     if (!report.assignedVolunteers) report.assignedVolunteers = [];
     if (!report.assignedVolunteers.includes(volunteerId)) {
         report.assignedVolunteers.push(volunteerId);
@@ -113,17 +115,20 @@ const acceptReport = async (incidentId, reportIndex, volunteerId) => {
 };
 
 const getIncidentById = async (incidentId) => {
-    return await Incident.findById(incidentId);
+    const objectId = toObjectId(incidentId);
+    return await Incident.findById(objectId);
 };
 
 const updateIncident = async (incidentId, updateData) => {
-    const incident = await Incident.findByIdAndUpdate(incidentId, updateData, { new: true });
+    const objectId = toObjectId(incidentId);
+    const incident = await Incident.findByIdAndUpdate(objectId, updateData, { new: true });
     if (!incident) throw new CustomError('Incident not found', 404);
     return incident;
 };
 
 const deleteIncident = async (incidentId) => {
-    const incident = await Incident.findByIdAndDelete(incidentId);
+    const objectId = toObjectId(incidentId);
+    const incident = await Incident.findByIdAndDelete(objectId);
     if (!incident) throw new CustomError('Incident not found', 404);
     return incident;
 };

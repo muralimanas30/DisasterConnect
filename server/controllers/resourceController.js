@@ -1,14 +1,15 @@
 const resourceService = require('../services/resourceService');
 const { CustomError } = require('../errorHandler/errorHandler');
+const { StatusCodes } = require('http-status-codes');
 
 const donate = async (req, res, next) => {
     try {
         const donation = await resourceService.donate(req.body, req.user);
-        res.status(201).json({ status: 'success', donation });
+        res.status(StatusCodes.CREATED).json({ donation });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to process donation.",
-            error.statusCode || 500,
+            error.message || "Failed to donate resource.",
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
@@ -17,11 +18,11 @@ const donate = async (req, res, next) => {
 const getResources = async (req, res, next) => {
     try {
         const resources = await resourceService.getResources(req.query);
-        res.status(200).json({ status: 'success', resources });
+        res.status(StatusCodes.OK).json({ resources });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to fetch resources.",
-            error.statusCode || 500,
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
@@ -30,11 +31,11 @@ const getResources = async (req, res, next) => {
 const allocateResource = async (req, res, next) => {
     try {
         const resource = await resourceService.allocateResource(req.body);
-        res.status(200).json({ status: 'success', resource });
+        res.status(StatusCodes.OK).json({ resource });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to allocate resource.",
-            error.statusCode || 500,
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
@@ -43,11 +44,11 @@ const allocateResource = async (req, res, next) => {
 const bulkAllocateResources = async (req, res, next) => {
     try {
         const results = await resourceService.bulkAllocateResources(req.body);
-        res.status(200).json({ status: 'success', results });
+        res.status(StatusCodes.OK).json({ results });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to allocate resources.",
-            error.statusCode || 500,
+            error.message || "Failed to bulk allocate resources.",
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
@@ -56,11 +57,11 @@ const bulkAllocateResources = async (req, res, next) => {
 const getDonationHistory = async (req, res, next) => {
     try {
         const history = await resourceService.getDonationHistory(req.user._id);
-        res.status(200).json({ status: 'success', history });
+        res.status(StatusCodes.OK).json({ history });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to fetch donation history.",
-            error.statusCode || 500,
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
@@ -69,15 +70,33 @@ const getDonationHistory = async (req, res, next) => {
 const getResourceById = async (req, res, next) => {
     try {
         const resource = await resourceService.getResourceById(req.params.resourceId);
-        res.status(200).json({ status: 'success', resource });
+        res.status(StatusCodes.OK).json({ resource });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to fetch resource details.",
-            error.statusCode || 500,
+            error.message || "Failed to fetch resource.",
+            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
     }
 };
+
+// Comment out donateMoney controller
+// const donateMoney = async (req, res, next) => {
+//     try {
+//         const { amount, currency, incidentId, resourceType } = req.body;
+//         const result = await resourceService.handleMonetaryDonation(
+//             { amount, currency, incidentId, resourceType },
+//             req.user
+//         );
+//         res.status(StatusCodes.CREATED).json(result);
+//     } catch (error) {
+//         next(error instanceof CustomError ? error : new CustomError(
+//             error.message || "Failed to process monetary donation.",
+//             error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+//             error
+//         ));
+//     }
+// };
 
 module.exports = {
     donate,
@@ -86,4 +105,5 @@ module.exports = {
     bulkAllocateResources,
     getDonationHistory,
     getResourceById,
+    // donateMoney,
 };

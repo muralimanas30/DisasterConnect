@@ -6,7 +6,7 @@ const registerSchema = Joi.object({
     password: Joi.string().min(6).required(),
     role: Joi.string().valid('victim', 'volunteer', 'admin').optional(),
     phone: Joi.string().optional(),
-    location: Joi.object({
+    currentLocation: Joi.object({
         type: Joi.string().valid('Point').default('Point'),
         coordinates: Joi.array().items(
             Joi.number().min(-180).max(180)

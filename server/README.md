@@ -141,3 +141,40 @@ User and incident modules are scaffolded and functional with robust error handli
 ---
 
 **Follow this structure for a clean, maintainable, and scalable DRCP backend.**
+
+# DRCP Server - Progress Summary
+
+## ✅ Completed/Stable
+- **User Module:** Model, registration, login, profile update, JWT, validation, error handling, tests.
+- **Incident Module:** Model, CRUD, reporting, assignment, status update, validation, error handling, tests.
+- **Error Handling:** Centralized, consistent pattern.
+- **Validation:** Joi/Mongoose for user, incident, volunteer.
+- **Testing:** Jest/Supertest for user, incident, and volunteer flows.
+- **Project Structure:** Modular, maintainable, scalable.
+
+## 🟡 Volunteer Module (Current Focus)
+- **Model:** Implemented and stable.
+- **Service:** Implemented (assignment, status/location update, get assigned incidents).
+- **Controller:** Implemented (assignment, profile update, get assigned incidents).
+- **Routes:** Implemented (clean, RESTful).
+- **Tests:** Implemented and passing for all major flows (assignment, status/location update, edge cases).
+
+## 🟡 Remaining/Planned
+- **Resource/Donation Module:** Model, service, controller, routes, tests.
+- **Chat Module:** Real-time group chat per incident (Socket.io), backend logic, tests.
+- **Admin Module:** User/incident/resource/task management, analytics, role-based access, tests.
+- **Task Module:** (If needed) For admin/volunteer task assignment.
+- **Ownership/Access Middleware:** Fine-grained access control for all resources.
+- **API Documentation:** Expand and maintain endpoint docs.
+- **Socket.io Integration:** For chat and real-time updates.
+- **More Tests:** Edge cases, integration, and security tests for all modules.
+
+---
+
+## **Summary**
+
+- **User, Incident, and Volunteer modules are implemented, tested, and stable.**
+- **Volunteer module is nearly complete and robust.**
+- **Next up:** Resource/Donation, Chat, Admin, and Task modules, plus more validation, access control, and documentation.
+
+**You are about halfway through the core backend. The foundation is strong and the next modules will build on this structure.**

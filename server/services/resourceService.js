@@ -1,7 +1,22 @@
+const mongoose = require('mongoose');
 const Resource = require('../models/Resource');
 const Donation = require('../models/Donation');
 const Incident = require('../models/Incident');
 const { CustomError } = require('../errorHandler/errorHandler');
+// const Razorpay = require('razorpay');
+
+// const razorpay = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_KEY_SECRET
+// });
+
+function toObjectId(id) {
+    if (id instanceof mongoose.Types.ObjectId) return id;
+    if (typeof id === 'string' && mongoose.Types.ObjectId.isValid(id)) {
+        return new mongoose.Types.ObjectId(id);
+    }
+    throw new CustomError('Invalid ObjectId', 400);
+}
 
 const donate = async (donationData, user) => {
     const resource = new Resource({ ...donationData, donatedBy: user._id });
@@ -21,23 +36,23 @@ const getResources = async (query) => {
     return await Resource.find(query);
 };
 
-// Allocate a resource to an incident
 const allocateResource = async ({ resourceId, incidentId }) => {
-    const resource = await Resource.findById(resourceId);
+    const resourceObjId = toObjectId(resourceId);
+    const incidentObjId = toObjectId(incidentId);
+    const resource = await Resource.findById(resourceObjId);
     if (!resource) throw new CustomError('Resource not found', 404);
 
-    const incident = await Incident.findById(incidentId);
+    const incident = await Incident.findById(incidentObjId);
     if (!incident) throw new CustomError('Incident not found', 404);
 
     if (resource.allocated) throw new CustomError('Resource already allocated', 400);
 
     resource.allocated = true;
-    resource.incident = incidentId;
+    resource.incident = incidentObjId;
     await resource.save();
 
-    // Optionally, add resource to incident's resources array
-    if (!incident.resources.includes(resourceId)) {
-        incident.resources.push(resourceId);
+    if (!incident.resources.includes(resourceObjId)) {
+        incident.resources.push(resourceObjId);
         await incident.save();
     }
 
@@ -45,12 +60,14 @@ const allocateResource = async ({ resourceId, incidentId }) => {
 };
 
 const bulkAllocateResources = async ({ resourceIds, incidentId }) => {
-    const incident = await Incident.findById(incidentId);
+    const incidentObjId = toObjectId(incidentId);
+    const incident = await Incident.findById(incidentObjId);
     if (!incident) throw new CustomError('Incident not found', 404);
 
     const results = [];
     for (const resourceId of resourceIds) {
-        const resource = await Resource.findById(resourceId);
+        const resourceObjId = toObjectId(resourceId);
+        const resource = await Resource.findById(resourceObjId);
         if (!resource) {
             results.push({ resourceId, status: 'not_found' });
             continue;
@@ -60,11 +77,11 @@ const bulkAllocateResources = async ({ resourceIds, incidentId }) => {
             continue;
         }
         resource.allocated = true;
-        resource.incident = incidentId;
+        resource.incident = incidentObjId;
         await resource.save();
 
-        if (!incident.resources.includes(resourceId)) {
-            incident.resources.push(resourceId);
+        if (!incident.resources.includes(resourceObjId)) {
+            incident.resources.push(resourceObjId);
         }
         results.push({ resourceId, status: 'allocated' });
     }
@@ -72,16 +89,31 @@ const bulkAllocateResources = async ({ resourceIds, incidentId }) => {
     return results;
 };
 
-// Get donation/resource history for a user
 const getDonationHistory = async (userId) => {
     return await Donation.find({ donor: userId }).populate('resource incident');
 };
 
-// Get resource details by ID
 const getResourceById = async (resourceId) => {
-    const resource = await Resource.findById(resourceId);
+    const resourceObjId = toObjectId(resourceId);
+    const resource = await Resource.findById(resourceObjId);
     if (!resource) throw new CustomError('Resource not found', 404);
     return resource;
+};
+
+/**
+ * Utility to seed initial resources if DB is empty.
+ */
+const seedInitialResources = async () => {
+    const count = await Resource.countDocuments();
+    if (count === 0) {
+        await Resource.insertMany([
+            { name: 'Food Packets', type: 'food', quantity: 500, donatedBy: null },
+            { name: 'Water Bottles', type: 'water', quantity: 1000, donatedBy: null },
+            { name: 'Transport Vouchers', type: 'transport', quantity: 200, donatedBy: null },
+            { name: 'Medicine Kits', type: 'medicine', quantity: 300, donatedBy: null },
+            { name: 'Blankets', type: 'shelter', quantity: 400, donatedBy: null }
+        ]);
+    }
 };
 
 module.exports = {
@@ -91,4 +123,5 @@ module.exports = {
     bulkAllocateResources,
     getDonationHistory,
     getResourceById,
+    seedInitialResources,
 };

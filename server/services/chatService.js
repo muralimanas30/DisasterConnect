@@ -1,11 +1,24 @@
+const Chat = require('../models/Chat');
+const { CustomError } = require('../errorHandler/errorHandler');
+
 const getIncidentChat = async (incidentId) => {
-    // TODO: Implement chat fetching logic for an incident
-    return [ /* array of messages */ ];
+    // Fetch all messages for an incident, sorted by sentAt
+    return await Chat.find({ incident: incidentId })
+        .populate('sender', 'name email role')
+        .sort({ sentAt: 1 });
 };
 
 const sendMessage = async (messageData, user) => {
-    // TODO: Implement sending a message (save, notify, etc.)
-    return { /* message object */ };
+    if (!messageData.incident || !messageData.message) {
+        throw new CustomError('incident and message are required', 400);
+    }
+    const chat = new Chat({
+        incident: messageData.incident,
+        sender: user._id,
+        message: messageData.message
+    });
+    await chat.save();
+    return await chat.populate('sender', 'name email role');
 };
 
 module.exports = {

@@ -28,7 +28,7 @@ describe('Incident API', () => {
                 email: 'incidentuser@example.com',
                 password: 'password123',
                 role: 'victim',
-                location: { type: 'Point', coordinates: [77, 12] }
+                currentLocation: { type: 'Point', coordinates: [77, 12] }
             });
 
         // Defensive: If registration returns token, use it, else login
@@ -62,7 +62,6 @@ describe('Incident API', () => {
             .send({
                 title: 'Flood',
                 description: 'Heavy flood in area',
-                status: 'open',
                 location: { type: 'Point', coordinates: [77, 12] }
             });
         expect(res.statusCode).toBe(201);
@@ -119,7 +118,7 @@ describe('Incident API', () => {
 
     it('should add a victim report to an incident', async () => {
         const res = await request(app)
-            .post(`/api/incidents/${incidentId}/victim-report`)
+            .post(`/api/incidents/${incidentId}/reports`)
             .set('Authorization', `Bearer ${token}`)
             .send({ message: 'Need urgent help!' });
         expect(res.statusCode).toBe(200);

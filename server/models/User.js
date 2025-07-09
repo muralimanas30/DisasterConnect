@@ -9,11 +9,12 @@ const userSchema = new mongoose.Schema({
     password: { type: String, required: true },
     role: { type: String, enum: ['victim', 'volunteer', 'admin'], default: 'victim' },
     phone: { type: String },
-    location: {
+    currentLocation: {
         type: { type: String, enum: ['Point'], default: 'Point' },
         coordinates: { type: [Number], default: [0, 0] }
     },
     createdAt: { type: Date, default: Date.now }
+
 });
 
 // Hash password before saving
@@ -29,7 +30,7 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
 };
 
 // Generate JWT method
-userSchema.methods.generateJWT = function() {
+userSchema.methods.generateJWT = function () {
     return jwt.sign(
         { _id: this._id, email: this.email, role: this.role },
         process.env.JWT_SECRET || require('../config').JWT_SECRET,
@@ -37,6 +38,7 @@ userSchema.methods.generateJWT = function() {
     );
 };
 
-userSchema.index({ location: '2dsphere' });
+userSchema.index({ currentLocation: '2dsphere' });
 
+module.exports = mongoose.model('User', userSchema);
 module.exports = mongoose.model('User', userSchema);

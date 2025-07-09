@@ -1,17 +1,18 @@
 const express = require('express');
 const resourceController = require('../controllers/resourceController');
-const { validateResource, validateAllocate, validateBulkAllocate } = require('../validators/resourceValidator');
+const { validateDonate, validateAllocate, validateBulkAllocate } = require('../validators/resourceValidator');
 const authMW = require('../middlewares/auth');
 const router = express.Router();
 
 router.use(authMW);
 
-router.post('/donate', validateResource, resourceController.donate);
+router.post('/donate', validateDonate, resourceController.donate);
+// router.post('/donate-money', resourceController.donateMoney); // <-- Comment out Razorpay route
 router.get('/', resourceController.getResources);
-router.post('/allocate', validateAllocate, resourceController.allocateResource);
-router.post('/allocate/bulk', validateBulkAllocate, resourceController.bulkAllocateResources);
 router.get('/history', resourceController.getDonationHistory);
 router.get('/:resourceId', resourceController.getResourceById);
+router.post('/allocate', validateAllocate, resourceController.allocateResource);
+router.post('/bulk-allocate', validateBulkAllocate, resourceController.bulkAllocateResources);
 
 // ...add more resource routes as needed
 
