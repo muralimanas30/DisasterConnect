@@ -28,8 +28,7 @@ mongoose.connect(MONGO_URI, {
 
 // Mount all API routes
 app.use('/api', routes);
-app.use('/api/users', userRoutes);
-app.use('/api/incidents', incidentRoutes);
+
 
 // Centralized error handler
 app.use(errorHandler);
@@ -76,4 +75,5 @@ io.on('connection', (socket) => {
     });
 });
 
-module.exports = { app, server }; // Export both for use in server.js
+// Only export the Express app for testing and normal usage
+module.exports = app;
