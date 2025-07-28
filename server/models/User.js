@@ -7,13 +7,21 @@ const userSchema = new mongoose.Schema({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['victim', 'volunteer', 'admin'], default: 'victim' },
+    role: { type: String, enum: ['victim', 'volunteer', 'admin'], required: true },
     phone: { type: String },
     currentLocation: {
-        type: { type: String, enum: ['Point'], default: 'Point' },
-        coordinates: { type: [Number], default: [0, 0] }
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point'
+        },
+        coordinates: {
+            type: [Number], // [lng, lat]
+            default: [0, 0]
+        }
     },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    assignedIncident: { type: mongoose.Schema.Types.ObjectId, ref: 'Incident', default: null }
 
 });
 

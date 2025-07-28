@@ -56,22 +56,30 @@ const updateProfile = async (userId, updateData) => {
 // Assign volunteer to an incident
 const assignToIncident = async (userId, incidentId) => {
     const objectId = toObjectId(incidentId);
-    console.log('Assigning user', userId, 'to incident', objectId);
+    // Professional logging
+    console.log(`[VOLUNTEER] Assign attempt: user ${userId} to incident ${objectId}`);
     const unresolved = await Incident.findOne({
         _id: { $ne: objectId },
         volunteers: userId,
         status: { $ne: 'resolved' }
     });
     if (unresolved) {
+        console.log(`[VOLUNTEER] Assignment failed: user ${userId} already assigned to unresolved incident ${unresolved._id}`);
         throw new CustomError('You can only be assigned to one unresolved incident at a time.', 400);
     }
 
     const incident = await Incident.findById(objectId);
-    if (!incident) throw new CustomError('Incident not found', 404);
+    if (!incident) {
+        console.log(`[VOLUNTEER] Assignment failed: incident ${objectId} not found`);
+        throw new CustomError('Incident not found', 404);
+    }
 
     if (!incident.volunteers.some(v => v.toString() === userId.toString())) {
         incident.volunteers.push(userId);
         await incident.save();
+        console.log(`[VOLUNTEER] Assignment successful: user ${userId} assigned to incident ${objectId}`);
+    } else {
+        console.log(`[VOLUNTEER] Assignment skipped: user ${userId} already assigned to incident ${objectId}`);
     }
     return true;
 };

@@ -47,4 +47,10 @@ router.post('/:incidentId/gathering-invitation', incidentController.sendGatherin
 // Report a new incident (victim/volunteer)
 router.post('/report', incidentController.reportIncident); // POST /api/incidents/report
 
+// Add another victim to an existing incident
+router.post('/:incidentId/add-victim', require('../controllers/incidentController').addVictimToIncident); // POST /api/incidents/:id/add-victim
+
+// Get live locations of all victims and volunteers for a specific incident
+router.get('/:incidentId/locations', require('../controllers/incidentController').getIncidentLocations); // GET /api/incidents/:incidentId/locations
+
 module.exports = router;

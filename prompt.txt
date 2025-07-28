@@ -1,0 +1,152 @@
+# DRCP Frontend Development Prompt
+
+## 1. Project Structure
+
+- The frontend is in the `client` folder.
+- **Do NOT use a `src` folder.** All code must be under:
+  - `client/app` (Next.js 15 app routing)
+  - `client/components` (shared and feature components)
+  - `client/store` (Redux Toolkit slices and store)
+  - `client/api` (API request logic)
+  - `client/hooks` (custom hooks)
+  - `client/lib` (constants, helpers)
+- Group files by feature/domain (e.g., `components/profile/`, `store/slices/incidentSlice.js`).
+
+## 2. File & Naming Conventions
+
+- All interactive components and pages must start with `"use client"`.
+- Use `.jsx` for all React components and pages.
+- Use PascalCase for component filenames, camelCase for variables/functions.
+- Every new page/component must include a short comment or text describing its intended functionality.
+
+## 3. Styling
+
+- Use only Tailwind CSS v4 and daisyUI v5 for styling.
+- Do NOT write custom CSS unless absolutely necessary.
+- Use semantic daisyUI classes for UI elements.
+- Use responsive Tailwind classes for layout and spacing.
+- Add `cursor-pointer` to all clickable elements.
+- Do NOT add `bg-base-100` or `text-base-content` to body unless necessary.
+
+## 4. API Integration & Data Consistency
+
+- All API requests must use field names and data structures consistent with backend documentation and expectations.
+- Never send extra/unnecessary fields to the backend.
+- Always handle and display backend error messages to the user in a user-friendly way.
+- Refer to backend README for endpoint details and expected request/response formats.
+- For every request or update in data, update the Redux state using thunk API.
+- Keep naming of data/fields in requests and Redux state consistent with backend expectations.
+
+## 5. Redux/Store
+
+- Use Redux Toolkit and thunks for all async actions.
+- Each feature/domain should have its own slice and thunks.
+- Always update the Redux state/store after any data change or API request.
+
+## 6. Error & Loading Handling
+
+- Always show backend error messages in the UI (preferably in a daisyUI alert).
+- Always show a loader (daisyUI loading-spinner) and disable submit buttons while processing async actions.
+
+## 7. Navigation & Routing
+
+- Use Next.js route groups for organization, but never reference them in URLs or navigation.
+- Use only public URLs in navigation and router calls.
+- Implement role-based navigation and UI (show/hide links and features based on user role).
+
+## 8. Backend Consistency
+
+- The frontend must fully utilize the backend, including all routes, controllers, and features as described in the backend README.
+- For every request or update in data, update the Redux state using thunk API.
+- Always follow backend naming and data conventions.
+
+## 9. Dependency Management
+
+- When adding a new dependency, provide the corresponding `pnpm add <package>` command.
+
+## 10. Component Samples
+
+- For every new component or page, include a sample component with text describing its intended functionality.
+
+## 11. General Best Practices
+
+- Do NOT create or add any README files in the frontend.
+- Refer to the provided daisyUI markdown for component/class usage.
+- Always inform before starting a new module or major update.
+
+## 12. Backend API Endpoints (Summary)
+
+Refer to backend README for full details. Key endpoints include:
+
+### User/Auth
+
+| Method | Endpoint                                 | Description                                 |
+|--------|------------------------------------------|---------------------------------------------|
+| POST   | /api/users/register                      | Register user (victim/volunteer/admin)      |
+| POST   | /api/users/login                         | Login user                                  |
+| GET    | /api/users/profile                       | Get current user profile                    |
+| PATCH  | /api/users/profile                       | Update profile (location, status, etc.)     |
+| DELETE | /api/users/:userId                       | Delete user (if not assigned)               |
+| POST   | /api/users/accept-invitation             | Accept gathering invitation                 |
+| GET    | /api/users/incident-history              | Get user's incident history                 |
+| GET    | /api/users/:userId/assigned-incident     | Get assigned incident for user              |
+
+### Incident
+
+| Method | Endpoint                                         | Description                                 |
+|--------|--------------------------------------------------|---------------------------------------------|
+| GET    | /api/incidents                                   | List all incidents (filtered for volunteers)|
+| POST   | /api/incidents                                   | Create new incident                         |
+| GET    | /api/incidents/:incidentId                       | Get incident by ID                          |
+| PATCH  | /api/incidents/:incidentId                       | Update incident                             |
+| DELETE | /api/incidents/:incidentId                       | Delete incident                             |
+| PATCH  | /api/incidents/:incidentId/status                | Update incident status                      |
+| POST   | /api/incidents/:incidentId/assign                | Assign volunteer to incident                |
+| GET    | /api/incidents/nearby                            | Get incidents near authenticated user       |
+| GET    | /api/incidents/:incidentId/victims               | List victims for incident                   |
+| GET    | /api/incidents/:incidentId/volunteers            | List volunteers for incident                |
+| GET    | /api/incidents/:incidentId/reports               | Get all reports for incident                |
+| POST   | /api/incidents/:incidentId/reports               | Add victim report to incident               |
+| POST   | /api/incidents/:incidentId/reports/:reportIndex/accept | Accept a report for an incident      |
+| POST   | /api/incidents/:incidentId/gathering-invitation  | Send gathering invitation                   |
+| POST   | /api/incidents/report                            | Report a new incident (victim/volunteer)    |
+
+### Volunteer
+
+| Method | Endpoint                                 | Description                                 |
+|--------|------------------------------------------|---------------------------------------------|
+| POST   | /api/volunteers/assign                   | Assign self to incident                     |
+| GET    | /api/volunteers/assigned-incidents       | List incidents assigned to this volunteer   |
+
+### Resource/Donation
+
+| Method | Endpoint                                 | Description                                 |
+|--------|------------------------------------------|---------------------------------------------|
+| POST   | /api/resources/donate                    | Donate a resource                           |
+| GET    | /api/resources                           | List all resources                          |
+| GET    | /api/resources/:resourceId               | Get resource by ID                          |
+| POST   | /api/resources/allocate                  | Allocate resource to incident               |
+| POST   | /api/resources/bulk-allocate             | Bulk allocate resources                     |
+| GET    | /api/resources/history                   | Get donation history                        |
+
+### Chat (REST & Socket.io)
+
+| Method | Endpoint                                 | Description                                 |
+|--------|------------------------------------------|---------------------------------------------|
+| GET    | /api/chat/incident/:incidentId           | Get all chat messages for incident          |
+| POST   | /api/chat/incident/:incidentId/message   | Send chat message                           |
+
+**Socket.io Events:**
+- `joinIncident` (join a chat room)
+- `sendMessage` (send message, broadcast to room)
+- `newMessage` (receive new message in real-time)
+
+
+## 13. Strict Consistency & Workflow
+
+- All code, naming, and data structures must be consistent across frontend and backend.
+- Always follow the above conventions and backend documentation.
+- Divide work into modules and inform before updating so feedback can be provided.
+
+---
+**Strictly follow these guidelines for all frontend development in DRCP.**

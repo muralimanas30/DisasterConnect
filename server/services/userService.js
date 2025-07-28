@@ -46,13 +46,43 @@ const updateUser = async (id, updateData) => {
     const user = await User.findById(objectId);
     if (!user) throw new CustomError('User not found.', 404);
 
-    // Only update allowed fields
-    const allowed = ['name', 'email', 'role', 'phone', 'currentLocation'];
+    // Prevent role change if assigned to any unresolved incident (victim or volunteer)
+    if (updateData.role && updateData.role !== user.role) {
+        const assignedIncident = await Incident.findOne({
+            $or: [
+                { victims: objectId },
+                { volunteers: objectId }
+            ],
+            status: { $ne: 'resolved' }
+        });
+        if (assignedIncident) {
+            throw new CustomError('Cannot change role while assigned to any incident.', 400);
+        }
+    }
+
+    // Only update allowed fields (add assignedIncident)
+    const allowed = ['name', 'email', 'role', 'phone', 'currentLocation', 'assignedIncident'];
     allowed.forEach(field => {
-        if (updateData[field] !== undefined) user[field] = updateData[field];
+        if (updateData[field] !== undefined) {
+            user[field] = updateData[field];
+        }
     });
     await user.save();
     return user;
+};
+
+// When an incident is resolved, clear assignedIncident for all victims and volunteers
+const clearAssignedIncidentForUsers = async (incident) => {
+    const userIds = [
+        ...incident.victims.map(v => v.toString()),
+        ...incident.volunteers.map(v => v.toString())
+    ];
+    if (userIds.length > 0) {
+        await User.updateMany(
+            { _id: { $in: userIds } },
+            { $set: { assignedIncident: null } }
+        );
+    }
 };
 
 // Delete user by ID
@@ -77,8 +107,19 @@ const deleteUser = async (id) => {
 };
 
 // Get all users
-const getAllUsers = async () => {
-    return await User.find();
+const getAllUsers = async (page = 1, limit = 10) => {
+    const skip = (page - 1) * limit;
+    const [items, totalItems] = await Promise.all([
+        User.find().skip(skip).limit(limit),
+        User.countDocuments()
+    ]);
+    return {
+        items,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+        totalItems
+    };
 };
 
 // Delete all users
@@ -94,16 +135,46 @@ const acceptGatheringInvitation = async (userId, invitationId) => {
 };
 
 // Get incident history
-const getIncidentHistory = async (userId) => {
+const getIncidentHistory = async (userId, page = 1, limit = 10) => {
     const objectId = toObjectId(userId);
-    const incidents = await Incident.find({
+    const query = {
         $or: [
             { victims: objectId },
             { volunteers: objectId }
         ]
-    });
-    return incidents;
+    };
+    const skip = (page - 1) * limit;
+    const [items, totalItems] = await Promise.all([
+        Incident.find(query).skip(skip).limit(limit),
+        Incident.countDocuments(query)
+    ]);
+    return {
+        items,
+        page,
+        limit,
+        totalPages: Math.ceil(totalItems / limit),
+        totalItems
+    };
 };
+
+// Get the unresolved incident assigned to the user (as victim or volunteer)
+const getAssignedIncident = async (userId) => {
+    const objectId = toObjectId(userId);
+    // Find one unresolved incident where user is a victim or volunteer
+    const incident = await Incident.findOne({
+        $or: [
+            { victims: objectId },
+            { volunteers: objectId }
+        ],
+        status: { $ne: 'resolved' }
+    })
+    .populate('victims')
+    .populate('volunteers')
+    .populate('resources');
+    return incident;
+};
+
+// assignedIncident is set/cleared in incidentService and userService as needed
 
 module.exports = {
     register,
@@ -115,4 +186,6 @@ module.exports = {
     deleteAllUsers,
     acceptGatheringInvitation,
     getIncidentHistory,
+    getAssignedIncident,
+    clearAssignedIncidentForUsers,
 };

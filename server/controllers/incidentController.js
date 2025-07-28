@@ -6,6 +6,7 @@ const Volunteer = require('../models/Volunteer');
 // Create a new incident
 const createIncident = async (req, res, next) => {
     try {
+        console.log(`[INCIDENT] Create endpoint hit by user: ${req.user._id} with data: ${JSON.stringify(req.body)}`);
         // Create the incident with the reporting user as the first victim
         const incidentData = {
             ...req.body,
@@ -21,8 +22,10 @@ const createIncident = async (req, res, next) => {
         }];
 
         const incident = await incidentService.createIncident(incidentData);
+        console.log(`[INCIDENT] Incident created with id: ${incident._id}`);
         res.status(StatusCodes.CREATED).json({ status: 'success', incident });
     } catch (error) {
+        console.log(`[INCIDENT] Create failed: ${error.message}`);
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to create incident.",
             error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
@@ -34,8 +37,19 @@ const createIncident = async (req, res, next) => {
 // Get all incidents
 const getIncidents = async (req, res, next) => {
     try {
-        const incidents = await incidentService.getAllIncidents();
-        res.status(StatusCodes.OK).json({ status: 'success', incidents });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        let result;
+        if (req.user.role === 'volunteer') {
+            result = await require('../services/incidentService').getAvailableIncidentsForVolunteer(req.user._id, page, limit);
+        } else {
+            result = await incidentService.getAllIncidents(page, limit);
+        }
+        res.status(StatusCodes.OK).json({
+            status: 'success',
+            incidents: result.incidents,
+            pagination: result.pagination
+        });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to fetch incidents.",
@@ -76,10 +90,7 @@ const getNearbyIncidents = async (req, res, next) => {
 // Update incident status
 const updateIncidentStatus = async (req, res, next) => {
     try {
-        // This is the main stage where an incident is marked as 'resolved'
-        // Typically, this is called when all victims confirm resolution or an admin/volunteer marks it resolved
         const updated = await incidentService.updateIncidentStatus(req.params.incidentId, req.body.status, req.user);
-        // If req.body.status === 'resolved', the incident is now considered completed
         res.status(StatusCodes.OK).json({ status: 'success', incident: updated });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
@@ -121,8 +132,15 @@ const sendGatheringInvitation = async (req, res, next) => {
 // Fetch volunteers' live locations for a given incident
 const listVolunteersForIncident = async (req, res, next) => {
     try {
-        const volunteers = await incidentService.listVolunteersForIncident(req.params.incidentId);
-        res.status(StatusCodes.OK).json({ status: 'success', volunteers });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        // You may need to update the service to support pagination for volunteers
+        const volunteers = await incidentService.listVolunteersForIncident(req.params.incidentId, page, limit);
+        res.status(StatusCodes.OK).json({
+            status: 'success',
+            volunteers: volunteers.items || volunteers,
+            pagination: volunteers.pagination || undefined
+        });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to fetch volunteers for incident.",
@@ -186,9 +204,12 @@ const getIncidentById = async (req, res, next) => {
 // Update an incident
 const updateIncident = async (req, res, next) => {
     try {
+        console.log(`[INCIDENT] Update endpoint hit for incident: ${req.params.incidentId} by user: ${req.user._id} with data: ${JSON.stringify(req.body)}`);
         const incident = await incidentService.updateIncident(req.params.incidentId, req.body);
+        console.log(`[INCIDENT] Incident updated: ${incident._id}`);
         res.status(StatusCodes.OK).json({ status: 'success', incident });
     } catch (error) {
+        console.log(`[INCIDENT] Update failed for incident: ${req.params.incidentId} | Reason: ${error.message}`);
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to update incident.",
             error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
@@ -200,9 +221,12 @@ const updateIncident = async (req, res, next) => {
 // Delete an incident
 const deleteIncident = async (req, res, next) => {
     try {
+        console.log(`[INCIDENT] Delete endpoint hit for incident: ${req.params.incidentId} by user: ${req.user._id}`);
         await incidentService.deleteIncident(req.params.incidentId);
+        console.log(`[INCIDENT] Incident deleted: ${req.params.incidentId}`);
         res.status(StatusCodes.OK).json({ status: 'success', message: 'Incident deleted' });
     } catch (error) {
+        console.log(`[INCIDENT] Delete failed for incident: ${req.params.incidentId} | Reason: ${error.message}`);
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to delete incident.",
             error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
@@ -214,11 +238,24 @@ const deleteIncident = async (req, res, next) => {
 // List victims for an incident
 const listVictimsForIncident = async (req, res, next) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        // You may need to update the service to support pagination for victims
         const incident = await incidentService.getIncidentById(req.params.incidentId);
         if (!incident) {
             throw new CustomError('Incident not found', 404);
         }
-        res.status(StatusCodes.OK).json({ status: 'success', victims: incident.victims });
+        const victims = incident.victims.slice((page - 1) * limit, page * limit);
+        res.status(StatusCodes.OK).json({
+            status: 'success',
+            victims,
+            pagination: {
+                page,
+                limit,
+                totalPages: Math.ceil(incident.victims.length / limit),
+                totalItems: incident.victims.length
+            }
+        });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to list victims for incident.",
@@ -231,15 +268,67 @@ const listVictimsForIncident = async (req, res, next) => {
 // Get all reports for an incident
 const getReportsForIncident = async (req, res, next) => {
     try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
         const incident = await incidentService.getIncidentById(req.params.incidentId);
         if (!incident) throw new CustomError('Incident not found', 404);
-        res.status(StatusCodes.OK).json({ status: 'success', reports: incident.reports });
+        const reports = incident.reports.slice((page - 1) * limit, page * limit);
+        res.status(StatusCodes.OK).json({
+            status: 'success',
+            reports,
+            pagination: {
+                page,
+                limit,
+                totalPages: Math.ceil(incident.reports.length / limit),
+                totalItems: incident.reports.length
+            }
+        });
     } catch (error) {
         next(error instanceof CustomError ? error : new CustomError(
             error.message || "Failed to get reports.",
             error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
             error
         ));
+    }
+};
+
+// Add a victim to an incident
+const addVictimToIncident = async (req, res, next) => {
+    try {
+        const { incidentId } = req.params;
+        const { userId } = req.body;
+        const incident = await require('../services/incidentService').addVictimToIncident(incidentId, userId);
+        res.status(200).json({ status: 'success', incident });
+    } catch (error) {
+        res.status(error.statusCode || 400).json({ status: 'error', error: error.message });
+    }
+};
+
+// Get incident locations
+const getIncidentLocations = async (req, res, next) => {
+    try {
+        const incidentId = req.params.incidentId;
+        const incident = await require('../services/incidentService').getIncidentById(incidentId);
+        if (!incident) return res.status(404).json({ error: 'Incident not found' });
+
+        // Collect locations for victims and volunteers
+        const locations = [
+            ...incident.victims.map(u => ({
+                userId: u._id,
+                name: u.name,
+                role: u.role,
+                location: u.currentLocation
+            })),
+            ...incident.volunteers.map(u => ({
+                userId: u._id,
+                name: u.name,
+                role: u.role,
+                location: u.currentLocation
+            }))
+        ];
+        res.json({ locations });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ error: error.message });
     }
 };
 
@@ -259,5 +348,11 @@ module.exports = {
     deleteIncident,
     listVictimsForIncident,
     getReportsForIncident,
+    addVictimToIncident,
+    getIncidentLocations,
     // ...add more exports as needed
 };
+// ...add more exports as needed
+// ...add more exports as needed
+// ...add more exports as needed
+// ...add more exports as needed

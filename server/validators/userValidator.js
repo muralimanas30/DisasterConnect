@@ -16,7 +16,13 @@ const registerSchema = Joi.object({
 
 const loginSchema = Joi.object({
     email: Joi.string().email().required(),
-    password: Joi.string().required()
+    password: Joi.string().required(),
+    currentLocation: Joi.object({
+        type: Joi.string().valid('Point').default('Point'),
+        coordinates: Joi.array().items(
+            Joi.number().min(-180).max(180)
+        ).length(2)
+    }).optional()
 });
 
 const validateRegister = (req, res, next) => {

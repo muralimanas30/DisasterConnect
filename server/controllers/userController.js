@@ -4,13 +4,17 @@
 const userService = require('../services/userService');
 const { CustomError } = require('../errorHandler/errorHandler');
 const { StatusCodes } = require('http-status-codes');
+const Incident = require("../models/Incident");
+const Volunteer = require("../models/Volunteer");
+const User = require("../models/User");
 
 const register = async (req, res, next) => {
     try {
+        // Log registration attempt
+        console.log(`[USER] Register endpoint hit with data: ${JSON.stringify(req.body)}`);
         const user = await userService.register(req.body);
         // If role is volunteer, create Volunteer doc if not exists
         if (user.role === 'volunteer') {
-            const Volunteer = require('../models/Volunteer');
             const exists = await Volunteer.findOne({ user: user._id });
             if (!exists) {
                 await Volunteer.create({
@@ -22,30 +26,45 @@ const register = async (req, res, next) => {
             }
         }
         const token = user.generateJWT();
-        res.status(StatusCodes.CREATED).json({ user, token }); // 201
+        console.log(`[USER] Registration successful for user: ${user.email} (role: ${user.role})`);
+        res.status(StatusCodes.CREATED).json({ user, token });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to register.",
-            StatusCodes.BAD_REQUEST,
-            error
-        ));
+        console.log(`[USER] Registration failed: ${error.message}`);
+        res.status(StatusCodes.BAD_REQUEST).json({ error: error.message });
     }
 };
 
 const login = async (req, res, next) => {
     try {
-        const { email, password } = req.body;
+        console.log(`[USER] Login endpoint hit for email: ${req.body.email}`);
+        const { email, password, currentLocation } = req.body;
         const { user, token } = await userService.login(email, password);
+
+        // Update currentLocation if provided
+        let updatedUser = user;
+        if (currentLocation) {
+            user.currentLocation = currentLocation;
+            await user.save();
+            // If user is a volunteer, update volunteer profile location too
+            if (user.role === 'volunteer') {
+                const Volunteer = require('../models/Volunteer');
+                await Volunteer.findOneAndUpdate(
+                    { user: user._id },
+                    { currentLocation },
+                    { new: true }
+                );
+            }
+            updatedUser = await userService.getUser(user._id); // fetch updated user
+        }
+
         // Remove password field before sending user object in response
-        const userObj = user.toObject ? user.toObject() : { ...user };
+        const userObj = updatedUser.toObject ? updatedUser.toObject() : { ...updatedUser };
         delete userObj.password;
-        res.status(StatusCodes.OK).json({ user: userObj, token }); // 200
+        console.log(`[USER] Login successful for user: ${user.email}`);
+        res.status(StatusCodes.OK).json({ user: userObj, token });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to login.",
-            StatusCodes.UNAUTHORIZED, // 401 for invalid credentials
-            error
-        ));
+        console.log(`[USER] Login failed for email: ${req.body.email} | Reason: ${error.message}`);
+        res.status(StatusCodes.UNAUTHORIZED).json({ error: error.message });
     }
 };
 
@@ -54,74 +73,46 @@ const getProfile = async (req, res, next) => {
         const user = await userService.getUser(req.user._id);
         res.status(StatusCodes.OK).json({ status: 'success', user });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to get profile.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
 };
 
 const updateProfile = async (req, res, next) => {
     try {
-        // console.log('PATCH /api/users/profile called');
-        // console.log('Request user:', req.user);
-        // console.log('Request body:', req.body);
-
-        const user = await userService.updateUser(req.user._id, req.body);
-        let mergedUser = user.toObject ? user.toObject() : { ...user };
-        // console.log('User after updateUser:', mergedUser);
-
-        if (user.role === 'volunteer') {
-            const Volunteer = require('../models/Volunteer');
-            // Always update and fetch the latest volunteer doc
-            const volunteer = await Volunteer.findOneAndUpdate(
-                { user: user._id },
-                req.body,
-                { new: true }
-            );
-            // console.log('Volunteer after findOneAndUpdate:', volunteer);
-            if (volunteer) {
-                // Merge all volunteer fields (except _id and user) into mergedUser
-                const { _id, user: userRef, ...volFields } = volunteer.toObject();
-                mergedUser = { ...mergedUser, ...volFields };
-                // console.log('Merged user after merging volunteer fields:', mergedUser);
-            } else {
-                // console.log('No volunteer document found for user:', user._id);
+        // Only allow updating allowed fields, including currentLocation
+        const allowedFields = ["name", "email", "phone", "address", "currentLocation", "role"];
+        const updateData = {};
+        for (const key of allowedFields) {
+            if (req.body[key] !== undefined) {
+                updateData[key] = req.body[key];
             }
         }
-
-        // console.log('Final response user:', mergedUser);
-        res.status(200).json({ user: mergedUser });
-    } catch (error) {
-        // console.error('Error in updateProfile:', error);
-        next(error);
+        const user = await User.findByIdAndUpdate(req.user._id, updateData, { new: true });
+        res.json(user);
+    } catch (err) {
+        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ error: err.message });
     }
 };
 
 const listUsers = async (req, res, next) => {
     try {
-        const users = await userService.getAllUsers();
-        res.status(StatusCodes.OK).json({ status: 'success', users });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const result = await userService.getAllUsers(page, limit);
+        res.status(StatusCodes.OK).json({ status: 'success', ...result });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to list users.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
 };
 
 const deleteUser = async (req, res, next) => {
     try {
+        console.log(`[USER] Delete endpoint hit for user: ${req.params.userId}`);
         await userService.deleteUser(req.params.userId);
+        console.log(`[USER] User deleted: ${req.params.userId}`);
         res.status(StatusCodes.OK).json({ status: 'success', message: 'User deleted' });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to delete user.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
 };
 
@@ -130,24 +121,35 @@ const acceptGatheringInvitation = async (req, res, next) => {
         const result = await userService.acceptGatheringInvitation(req.user._id, req.body.invitationId);
         res.status(StatusCodes.OK).json({ status: 'success', result });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to accept invitation.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
     }
 };
 
 const getIncidentHistory = async (req, res, next) => {
     try {
-        const history = await userService.getIncidentHistory(req.user._id);
-        res.status(StatusCodes.OK).json({ status: 'success', history });
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const result = await userService.getIncidentHistory(req.user._id, page, limit);
+        res.status(StatusCodes.OK).json({ status: 'success', ...result });
     } catch (error) {
-        next(error instanceof CustomError ? error : new CustomError(
-            error.message || "Failed to fetch incident history.",
-            error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
-            error
-        ));
+        res.status(error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR).json({ error: error.message });
+    }
+};
+
+const getAssignedIncident = async (req, res, next) => {
+    try {
+        const userId = req.params.userId;
+        // Only allow self or admin to fetch
+        if (req.user.role !== 'admin' && req.user._id.toString() !== userId) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+        const user = await userService.getUser(userId);
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        const incident = await userService.getAssignedIncident(userId);
+        res.json({ incident: incident || null });
+    } catch (error) {
+        res.status(error.statusCode || 500).json({ error: error.message });
     }
 };
 
@@ -160,4 +162,5 @@ module.exports = {
     deleteUser,
     acceptGatheringInvitation,
     getIncidentHistory,
+    getAssignedIncident,
 };
