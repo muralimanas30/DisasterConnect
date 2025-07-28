@@ -20,24 +20,49 @@ export default function IncidentDetails({ incident, distance, location }) {
     const { user } = useSelector(state => state.user);
     const { assignedIncident, loading, success, error } = useSelector(state => state.incidents);
 
-    // Get current location from Redux user state (supports both user.location and user.currentLocation)
+    // Always get the latest user location from Redux (currentLocation preferred)
     const { location: userLocation, currentLocation } = user || {};
-    const loc =
+    const effectiveLocation =
         currentLocation && Array.isArray(currentLocation.coordinates)
             ? currentLocation
             : userLocation && Array.isArray(userLocation.coordinates)
             ? userLocation
-            : incident.location;
+            : null;
 
-    const coords = useMemo(() => {
-        if (incident.location?.coordinates) {
-            return {
-                lat: incident.location.coordinates[1],
-                lng: incident.location.coordinates[0]
-            };
+    // Compute distance dynamically if not provided as prop
+    function getDistanceMeters([lon1, lat1], [lon2, lat2]) {
+        const toRad = deg => deg * Math.PI / 180;
+        const R = 6371000;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2)**2 +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    let computedDistance = "-";
+    if (
+        effectiveLocation &&
+        Array.isArray(effectiveLocation.coordinates) &&
+        incident?.location?.coordinates &&
+        Array.isArray(incident.location.coordinates)
+    ) {
+        // Defensive: both must be [lng, lat] arrays of length 2
+        if (
+            effectiveLocation.coordinates.length === 2 &&
+            incident.location.coordinates.length === 2 &&
+            typeof effectiveLocation.coordinates[0] === "number" &&
+            typeof effectiveLocation.coordinates[1] === "number" &&
+            typeof incident.location.coordinates[0] === "number" &&
+            typeof incident.location.coordinates[1] === "number"
+        ) {
+            computedDistance = getDistanceMeters(
+                effectiveLocation.coordinates,
+                incident.location.coordinates
+            ).toFixed(0);
         }
-        return null;
-    }, [incident.location]);
+    }
 
     // Accept/Assign incident handler
     const handleAcceptIncident = () => {
@@ -83,7 +108,9 @@ export default function IncidentDetails({ incident, distance, location }) {
                         <div className="flex flex-wrap gap-2 items-center mb-2">
                             <span className="badge badge-info">{incident.status}</span>
                             <span className="badge badge-ghost">{new Date(incident.createdAt).toLocaleString()}</span>
-                            <span className="badge badge-outline">Distance: {distance} m</span>
+                            <span className="badge badge-outline">
+                                Distance: {computedDistance} m
+                            </span>
                         </div>
                         <h2 className="card-title text-xl">{incident.title}</h2>
                         <div className="mb-2">{incident.description}</div>
@@ -93,8 +120,8 @@ export default function IncidentDetails({ incident, distance, location }) {
                             <div className="collapse-content">
                                 <ul className="flex flex-wrap gap-2">
                                     {incident.victims?.length > 0 ? (
-                                        incident.victims.map(v => (
-                                            <li key={v._id || `victim-${v.name || v}`} className="badge badge-outline badge-sm">
+                                        incident.victims.map((v,rand) => (
+                                            <li key={rand} className="badge badge-outline badge-sm">
                                                 {v.name || v._id || v}
                                             </li>
                                         ))
@@ -128,7 +155,7 @@ export default function IncidentDetails({ incident, distance, location }) {
                                 {incident.reports?.length > 0 ? (
                                     <ul className="flex flex-col gap-2">
                                         {incident.reports.map((r, idx) => (
-                                            <li key={r._id || `report-${idx}`} className="card bg-base-300 p-2">
+                                            <li key={idx} className="card bg-base-300 p-2">
                                                 <div className="flex flex-col">
                                                     <span className="text-sm font-mono text-gray-500">
                                                         {new Date(r.createdAt).toLocaleDateString()}{" "}

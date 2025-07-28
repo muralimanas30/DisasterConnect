@@ -149,6 +149,15 @@ const userSlice = createSlice({
             state.error = null;
             state.success = null;
         },
+        updateCurrentLocation(state, action) {
+            if (state.user) {
+                state.user.currentLocation = action.payload;
+                if (typeof window !== "undefined") {
+                    // Persist updated location in sessionStorage
+                    sessionStorage.setItem("user", JSON.stringify(state.user));
+                }
+            }
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -225,5 +234,5 @@ const userSlice = createSlice({
     },
 });
 
-export const { logout, clearStatus, setUserFromStorage } = userSlice.actions;
+export const { logout, clearStatus, setUserFromStorage, updateCurrentLocation } = userSlice.actions;
 export default userSlice.reducer;

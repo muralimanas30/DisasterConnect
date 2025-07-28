@@ -39,18 +39,10 @@ export default function IncidentMap({ incidentId, token, lat, lng }) {
         if (incidentId) dispatch(fetchIncidentLocationsThunk(incidentId));
     }, [incidentId, dispatch]);
 
-    // Emit user's location every 5 seconds
+    // Emit only the user's location every 5 seconds
     useEffect(() => {
         if (!socketRef.current || !incidentId || !user?.currentLocation) return;
         const interval = setInterval(() => {
-            // This is the payload sent via socket for user location:
-            // {
-            //   userId: user._id,
-            //   incidentId,
-            //   location: user.currentLocation,
-            //   name: user.name,
-            //   role: user.role,
-            // }
             socketRef.current.emit("updateLocation", {
                 userId: user._id,
                 incidentId,
@@ -60,13 +52,20 @@ export default function IncidentMap({ incidentId, token, lat, lng }) {
             });
         }, 5000);
         return () => clearInterval(interval);
-    }, [socketRef, incidentId, user]);
+    }, [socketRef, incidentId, user?.currentLocation, user?._id, user?._id, user?._id, user?._id]);
 
-    // Listen for location updates from socket
+    // Listen for location updates from socket and update both liveLocations and user.currentLocation if it's self
     useEffect(() => {
         if (!socketRef.current) return;
         const handler = (data) => {
             dispatch(updateLiveLocation(data));
+            // If the update is for the current user, update user.currentLocation in Redux
+            if (data.userId === user?._id && data.location) {
+                dispatch({
+                    type: "user/updateCurrentLocation",
+                    payload: data.location,
+                });
+            }
         };
         socketRef.current.on("locationUpdate", handler);
         return () => {
@@ -74,9 +73,9 @@ export default function IncidentMap({ incidentId, token, lat, lng }) {
                 socketRef.current.off("locationUpdate", handler);
             }
         };
-    }, [socketRef, dispatch]);
+    }, [socketRef, dispatch, user?._id]);
 
-    // Prepare markers for map
+    // Prepare markers for map from liveLocations
     const markers = liveLocations
         .filter(u => u.location?.coordinates)
         .map(u => ({
@@ -94,4 +93,32 @@ export default function IncidentMap({ incidentId, token, lat, lng }) {
 
     return <IncidentMapClient markers={markers} center={center} selfUserId={user?._id} />;
 }
+
+// --- SOCKET FUNCTIONALITY SUMMARY ---
+//
+// 1. Location Sending (Client to Server):
+//    - Every 5 seconds, the client emits the user's current location to the backend via:
+//      socket.emit("updateLocation", {
+//          userId: user._id,
+//          incidentId,
+//          location: user.currentLocation,
+//          name: user.name,
+//          role: user.role,
+//      });
+//  
+// 2. Location Receiving (Server to Client):
+//    - The client listens for "locationUpdate" events from the backend.
+//    - On receiving a location update, it updates the Redux liveLocations array.
+//    - If the update is for the current user, it also updates user.currentLocation in Redux.
+//
+// 3. Room Joining (Chat/Location):
+//    - The client emits "joinIncident" with { incidentId, token } to join the incident's socket room.
+//    - This enables receiving real-time updates for that incident.
+//
+// 4. Chat Messaging (see IncidentChat):
+//    - The client emits "sendMessage" with { incidentId, message, user } to send a chat message.
+//    - The backend broadcasts "newMessage" to all users in the incident room.
+//    - The client listens for "newMessage" and updates the chat UI.
+//
+// --- END SOCKET FUNCTIONALITY SUMMARY ---
 

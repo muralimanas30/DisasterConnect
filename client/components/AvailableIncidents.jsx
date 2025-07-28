@@ -98,7 +98,7 @@ export default function AvailableIncidents({ onJoinIncident }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {incidents.map((incident) => {
+                            {incidents.map((incident,rand) => {
                                 const coords = incident.location?.coordinates;
                                 const distance =
                                     userLocation && coords
@@ -110,7 +110,7 @@ export default function AvailableIncidents({ onJoinIncident }) {
                                     incident.volunteers?.some(v => (v._id || v) === user._id);
 
                                 return (
-                                    <tr key={incident._id}>
+                                    <tr key={rand}>
                                         <td>{incident.title}</td>
                                         <td>{incident.description}</td>
                                         <td>{coords ? formatCoords(coords) : "Unknown"}</td>

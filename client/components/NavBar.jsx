@@ -1,12 +1,10 @@
 "use client";
 /**
  * Disaster Connect Navbar
- * Two-row responsive navbar:
- * - Top row: login/register, user info, role, logout, theme toggle.
- * - Bottom row: navigation links, centered (only if logged in).
- * No hydration errors. All list items have unique keys.
+ * Responsive two-row navbar:
+ * - Top row: logo only (centered on mobile, left on desktop)
+ * - Second row: user info, theme toggle, login/register/logout, and nav links (menu on mobile)
  */
-
 import Link from "next/link";
 import { useSelector, useDispatch } from "react-redux";
 import { useEffect, useState } from "react";
@@ -17,6 +15,7 @@ export default function Navbar() {
     const assignedIncident = useSelector((state) => state.incidents.assignedIncident);
     const dispatch = useDispatch();
     const [theme, setTheme] = useState("light");
+    const [navOpen, setNavOpen] = useState(false);
 
     useEffect(() => {
         if (typeof window !== "undefined") {
@@ -39,7 +38,7 @@ export default function Navbar() {
         dispatch(logout());
     };
 
-    // Navigation links for bottom row
+    // Navigation links for menu
     const navLinks = [
         { href: "/incidents", label: "Incidents" },
         { href: "/dashboard", label: "Dashboard" },
@@ -54,8 +53,8 @@ export default function Navbar() {
 
     return (
         <nav className="w-full bg-base-200 shadow-lg">
-            {/* Top Row */}
-            <div className="flex items-center justify-between px-4 py-2 border-b border-base-300">
+            {/* Top Row: Logo only */}
+            <div className="flex justify-center items-center px-4 py-2 border-b border-base-300">
                 <Link href="/" className="flex items-center gap-2 cursor-pointer">
                     <svg width="32" height="32" viewBox="0 0 24 24" className="text-primary">
                         <circle cx="12" cy="12" r="10" fill="currentColor" opacity="0.15" />
@@ -63,8 +62,11 @@ export default function Navbar() {
                     </svg>
                     <span className="font-bold text-xl text-primary">Disaster Connect</span>
                 </Link>
-                <div className="flex items-center gap-4">
-                    {/* Theme toggle */}
+            </div>
+            {/* Second Row: User info, theme, login/logout, nav menu */}
+            <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-2 gap-2">
+                {/* Left: User info, theme, login/logout */}
+                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full sm:w-auto">
                     <button
                         className="btn btn-ghost btn-sm"
                         aria-label="Toggle dark/light mode"
@@ -100,26 +102,41 @@ export default function Navbar() {
                         </>
                     ) : (
                         <>
-                            <Link href="/login" className="btn btn-outline btn-primary btn-sm">Login</Link>
-                            <Link href="/register" className="btn btn-primary btn-sm">Register</Link>
+                            <Link href="/login" className="btn btn-outline btn-primary btn-sm w-full sm:w-auto">Login</Link>
+                            <Link href="/register" className="btn btn-primary btn-sm w-full sm:w-auto">Register</Link>
                         </>
                     )}
                 </div>
+                {/* Right: Nav menu (dropdown on mobile, horizontal on desktop) */}
+                {user && (
+                    <div className="dropdown dropdown-end w-full sm:w-auto">
+                        <label tabIndex={0} className="btn btn-ghost btn-md font-semibold text-base-content sm:hidden w-full">
+                            Menu
+                            <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" className="ml-2">
+                                <path d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </label>
+                        <ul tabIndex={0} className="dropdown-content menu menu-sm bg-base-200 rounded-box shadow-lg w-52 mt-2 z-50 sm:hidden">
+                            {navLinks.map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="w-full">{link.label}</Link>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="hidden sm:flex flex-wrap items-center gap-4">
+                            {navLinks.map((link) => (
+                                <Link
+                                    key={link.href}
+                                    href={link.href}
+                                    className="btn btn-ghost btn-md font-semibold text-base-content"
+                                >
+                                    {link.label}
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
-            {/* Bottom Row: Only show if user is logged in */}
-            {user && (
-                <div className="flex flex-wrap items-center justify-center gap-6 px-4 py-2">
-                    {navLinks.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className="btn btn-ghost btn-md font-semibold text-base-content"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
-                </div>
-            )}
         </nav>
     );
 }

@@ -146,7 +146,7 @@ export default function IncidentChat({ incidentId, user, token }) {
                                             : ""}
                                     </span>
                                 </div>
-                                <div className={`chat-bubble ${bubbleColor} text-base`}>
+                                <div className={`chat-bubble ${bubbleColor} text-base break-words max-w-xs sm:max-w-md`}>
                                     {msg.message}
                                 </div>
                                 {senderEmail && (
