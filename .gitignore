@@ -3,6 +3,7 @@
 
 .env
 dist
+.dist
 coverage
 logs
 *.log
