@@ -8,7 +8,8 @@ import ReduxDevTools from "../components/ReduxDevTools";
 import React from "react";
 import RouteLoader from "@/hooks/useRouteLoader";
 import { Provider } from "react-redux";
-import store from "../store"; // adjust path if needed
+import { ToastContainer } from "react-toastify";
+import store from "@/store";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,9 +32,10 @@ export default function RootLayout({ children }) {
           <Providers>
             <AppClientProvider /> {/* This handles sessionStorage hydration */}
             <NavBar />
-            
             <RouteLoader />
             {children}
+            {/* ToastContainer for react-toastify toasts */}
+            <ToastContainer />
           </Providers>
           <ReduxDevTools />
         </body>

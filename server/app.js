@@ -72,28 +72,74 @@ io.on('connection', (socket) => {
     });
 
     // Live location update event
-    socket.on('updateLocation', ({ userId, incidentId, location, role }) => {
+    socket.on('updateLocation', async ({ userId, incidentId, location }) => {
         console.log(`[SOCKET] Received location update from user ${userId} for incident ${incidentId}: ${JSON.stringify(location)}`);
+
+        // Always fetch user name and role from DB
+        let name, role;
+        try {
+            const User = require('./models/User');
+            const userDoc = await User.findById(userId).select('name role');
+            if (userDoc) {
+                name = userDoc.name;
+                role = userDoc.role;
+            }
+        } catch (err) {
+            console.error(`[SOCKET] Error fetching user for location broadcast: ${err.message}`);
+        }
 
         // Broadcast immediately to all users in the incident room
         io.to(`incident_${incidentId}`).emit('locationUpdate', {
             userId,
-            name: location.name, // frontend should send name for immediate broadcast
-            role,                // frontend should send role for immediate broadcast
+            name,
+            role,
             location,
         });
-        console.log(`[SOCKET] Broadcasted locationUpdate for user ${userId} (${location.name}, ${role}) in incident ${incidentId}`);
+        console.log(`[SOCKET] Broadcasted locationUpdate for user ${userId} (${name}, ${role}) in incident ${incidentId}`);
 
         // Update user's location in DB asynchronously after 10 seconds
         setTimeout(async () => {
             try {
                 const User = require('./models/User');
                 await User.findByIdAndUpdate(userId, { currentLocation: location });
-                console.log(`[SOCKET] Location saved to DB for user ${userId} (${location.name}) in incident ${incidentId}`);
+                console.log(`[SOCKET] Location saved to DB for user ${userId} (${name}) in incident ${incidentId}`);
             } catch (err) {
                 console.error(`[SOCKET] Error saving location to DB: ${err.message}`);
             }
         }, 10000);
+    });
+
+    // Volunteer alert event
+    socket.on('sendAlert', async ({ userId, incidentId, alertType }, ack) => {
+        try {
+            const User = require('./models/User');
+            const userDoc = await User.findById(userId).select('name role');
+            let alertMessage;
+            switch (alertType) {
+                case 'comeToMe':
+                    alertMessage = `${userDoc?.name || 'A volunteer'} requests everyone to come to their location.`;
+                    break;
+                case 'stayTogether':
+                    alertMessage = `${userDoc?.name || 'A volunteer'} requests everyone to stay together.`;
+                    break;
+                default:
+                    alertMessage = `${userDoc?.name || 'A volunteer'} sent an alert.`;
+            }
+            const alertPayload = {
+                userId,
+                name: userDoc?.name,
+                role: userDoc?.role,
+                alertType,
+                message: alertMessage,
+                timestamp: new Date().toISOString()
+            };
+            io.to(`incident_${incidentId}`).emit('incidentAlert', alertPayload);
+            console.log(`[SOCKET] Alert "${alertType}" sent by ${userDoc?.name} (${userId}) in incident ${incidentId}`);
+            if (typeof ack === 'function') ack({ status: 'ok' });
+        } catch (err) {
+            console.error(`[SOCKET] Error sending alert: ${err.message}`);
+            if (typeof ack === 'function') ack({ status: 'error', error: err.message });
+        }
     });
 
     socket.on('disconnect', () => {

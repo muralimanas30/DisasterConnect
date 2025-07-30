@@ -1,7 +1,11 @@
 require('dotenv').config();
 
 module.exports = {
-    MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/drcp',
+    MONGO_URI:
+        //  process.env.MONGO_URI 
+        // ||
+        'mongodb://localhost:27017/disasterconnect'
+        ,
     PORT: process.env.PORT || 5000,
     JWT_SECRET: process.env.JWT_SECRET || 'supersecret',
     // Add this for mongoose 6+ to avoid deprecated options warning

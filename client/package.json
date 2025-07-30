@@ -19,6 +19,7 @@
     "react-leaflet": "^5.0.0",
     "react-leaflet-markercluster": "^5.0.0-rc.0",
     "react-redux": "^9.2.0",
+    "react-toastify": "^11.0.5",
     "socket.io-client": "^4.8.1",
     "use-router-with-events": "^0.2.0"
   },

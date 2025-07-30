@@ -3,11 +3,15 @@
  * AssignedIncident
  * Shows details, chat, and map for the volunteer's assigned incident.
  */
+import AlertTasks from "./AlertTasks";
 import IncidentChat from "./IncidentChat";
-import IncidentMap from "./IncidentMap";
+import { useSelector } from "react-redux";
 
 export default function AssignedIncident({ incident }) {
     if (!incident) return null;
+    const { user } = useSelector((state) => state.user);
+    const token = useSelector((state) => state.user.token);
+
     return (
         <div className="card bg-base-200 shadow-xl my-6">
             <div className="card-body">
@@ -19,9 +23,11 @@ export default function AssignedIncident({ incident }) {
                     </span>
                 </div>
                 <p className="mb-4">{incident.description}</p>
-                <IncidentMap lat={incident.location?.coordinates?.[1]} lng={incident.location?.coordinates?.[0]} />
+                {/* Replace map with AlertTasks for volunteers */}
+                {user?.role === "volunteer" && (
+                    <AlertTasks incidentId={incident._id} token={token} />
+                )}
                 <IncidentChat incidentId={incident._id} />
-                {/* Only victims can mark as resolved, so no MarkResolvedButton here */}
             </div>
         </div>
     );
