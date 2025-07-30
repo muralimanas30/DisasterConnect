@@ -1,5 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-node_modules
+**/node_modules/
+
 .env
 dist
 coverage
@@ -28,3 +29,8 @@ tmp/
 *.history
 *.cache
 *.nyc
+inMind.md
+inMind.pdf
+prompt.txt
+disaster-relief-app
+images
