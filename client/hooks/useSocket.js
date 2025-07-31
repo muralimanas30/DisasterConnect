@@ -1,7 +1,8 @@
+import { BACKEND_URL } from "@/lib/constants";
 import { useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
-const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || "http://localhost:8000"; // Adjust as needed
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || BACKEND_URL; // Adjust as needed
 
 export default function useSocket(token, key = 0) {
     const socketRef = useRef(null);
